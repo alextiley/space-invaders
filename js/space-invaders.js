@@ -382,7 +382,7 @@ var SpaceInvadersGame = function (userOptions) {
 window.onload = function () {
 	var game,
 		options = {
-			difficulty: 5,
+			difficulty: 3,
 			debug: true
 		};
 
