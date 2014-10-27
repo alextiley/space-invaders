@@ -222,13 +222,11 @@ var SpaceInvadersGame = function (userOptions) {
 	};
 
 	game.Spaceship.prototype.move = function (x) {
-		var newX = this.x + x;
-		if (newX <= 0) {
+		this.x += x;
+		if (this.isAtLeftBoundary()) {
 			this.x = 0;
-		} else if (newX + this.width >= game.constants.GAME_WIDTH) {
+		} else if (this.isAtRightBoundary()) {
 			this.x = game.constants.GAME_WIDTH - this.width;
-		} else {
-			this.x = newX;
 		}
 	};
 
