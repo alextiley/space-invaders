@@ -40,6 +40,7 @@ var SpaceInvadersGame = function (userOptions) {
 		keys: {}, // Stores the current key presses for access within each frame
 		firing: false, // Is the player firing a weapon? Used to allow delay between new lasers
 		initialised: false, // Flag to determine whether the first frame has been fully rendered
+		valid: true,
 		directions: { 
 			left: false,
 			right: true, // Initialise and store which direction the alien fleet are travelling in. They always move right at the beginning.
@@ -78,6 +79,10 @@ var SpaceInvadersGame = function (userOptions) {
 
 	game.Actor.prototype.isAtRightBoundary = function () {
 		return this.x + this.width >= game.constants.GAME_WIDTH;
+	};
+
+	game.Actor.prototype.isAtBottomBoundary = function () {
+		return this.y + this.height >= game.constants.GAME_HEIGHT - game.constants.SPACESHIP_HEIGHT;
 	};
 
 	/*
@@ -148,28 +153,33 @@ var SpaceInvadersGame = function (userOptions) {
 		
 		var next;
 
-		// Detect collisions for all frames after the first frame
-		if (game.state.initialised) {
-			if (!game.state.directions.down) {
-				if (this.bottomRightAlien.isAtRightBoundary()) {
-					game.state.directions.right = false;
-					game.state.directions.down = true;
-					next = 'left';
-				} else if (this.bottomLeftAlien.isAtLeftBoundary()) {
-					game.state.directions.left = false;
-					game.state.directions.down = true;
-					next = 'right';
-				}
-			} else if (game.state.directions.down) {
-				// if collision with (GAME_HEIGHT - SPACESHIP_HEIGHT), game over
+		// Detect boundary collisions for all frames after the first frame
+		if (!game.state.directions.down) {
+			if (this.bottomRightAlien.isAtRightBoundary()) {
+				game.state.directions.right = false;
+				game.state.directions.down = true;
+				next = 'left';
+			} else if (this.bottomLeftAlien.isAtLeftBoundary()) {
+				game.state.directions.left = false;
+				game.state.directions.down = true;
+				next = 'right';
 			}
 		}
 		
+		// Move down after a boundary collision for 300ms - refactor
 		if (game.state.directions[next] !== undefined) {
 			setTimeout(function () {
 				game.state.directions.down = false;
 				game.state.directions[next] = true;
 			}, 300);
+		}
+	};
+
+	game.AlienFleet.prototype.detectGameOver = function () {
+		if (game.state.directions.down) {
+			if (this.bottomRightAlien.isAtBottomBoundary()) {
+				game.state.valid = false;
+			}
 		}
 	};
 
@@ -183,7 +193,10 @@ var SpaceInvadersGame = function (userOptions) {
 
 		var directions = game.state.directions;
 
-		this.updateMovementDirection();
+		if (game.state.initialised) {
+			this.updateMovementDirection();
+			this.detectGameOver();
+		}
 
 		for (var i = this.aliens.length - 1; i >= 0; i--) {
 			this.aliens[i].update(directions.left, directions.right, directions.down);
@@ -299,6 +312,10 @@ var SpaceInvadersGame = function (userOptions) {
 		}
 	};
 
+	game.reset = function () {
+		// reset stub
+	}
+
 	game.renderFrame = function () {
 		var i;
 
@@ -317,12 +334,18 @@ var SpaceInvadersGame = function (userOptions) {
 	};
 
 	game.nextFrame = function () {
-		game.animate.call(window, game.nextFrame);
-		game.updateFrame();
-		game.renderFrame();
+		if (game.state.valid) {
+			game.animate.call(window, game.nextFrame);
+			game.updateFrame();
+			game.renderFrame();
+		} else {
+			window.cancelAnimationFrame(game.animate);
+			window.alert('Game Over!');
+			game.reset();
+		}
 	};
 
-	game.renderStage = function () {
+	game.initRendering = function () {
 		game.canvas = document.createElement('canvas');
 
 		game.canvas.height = game.constants.GAME_HEIGHT;
@@ -349,7 +372,7 @@ var SpaceInvadersGame = function (userOptions) {
 
 	game.start = function () {
 		game.utils.setOptions(userOptions);
-		game.renderStage();
+		game.initRendering();
 		game.initKeyBindings();
 	};
 
@@ -359,7 +382,7 @@ var SpaceInvadersGame = function (userOptions) {
 window.onload = function () {
 	var game,
 		options = {
-			difficulty: 2,
+			difficulty: 5,
 			debug: true
 		};
 
